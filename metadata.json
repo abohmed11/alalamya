@@ -1,0 +1,6 @@
+{
+  "name": "العالمية للمراتب - نظام الفواتير والمخزون",
+  "description": "نظام متكامل لإدارة الفواتير والمخزون وشفتات الموظفين والتقارير المالية لمحل العالمية للمراتب تحت إدارة إسلام شومان.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
