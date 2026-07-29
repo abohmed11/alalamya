@@ -251,6 +251,52 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           </p>
 
           <div className="space-y-3 pt-2">
+            {/* Primary Backup & Restore Actions Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 p-4 rounded-xl space-y-3 shadow-sm">
+              <div className="text-xs font-black text-blue-900 border-b border-blue-200 pb-2 flex items-center justify-between">
+                <span>🔄 النسخ الاحتياطي والاستعادة الفورية</span>
+                <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded font-bold">بضغطة واحدة</span>
+              </div>
+
+              {/* Download Backup Button */}
+              <button
+                type="button"
+                onClick={() => exportBackupJSON(systemData)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black p-3.5 rounded-xl border-2 border-blue-700 transition flex items-center justify-between cursor-pointer shadow-md active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-white text-blue-700 p-2 rounded-lg shadow-sm">
+                    <Download className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-black tracking-wide">نسخ احتياطي للبيانات - Backup</div>
+                    <div className="text-[11px] text-blue-100 font-bold">تنزيل ملف شامل بكل الفواتير والمنتجات وداتا المحل للحفظ على جهازك</div>
+                  </div>
+                </div>
+                <span className="bg-white text-blue-900 text-xs px-3 py-1.5 rounded-lg font-black shrink-0 shadow-sm">تنزيل Backup ⬇️</span>
+              </button>
+
+              {/* Restore Backup Button */}
+              <label className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black p-3.5 rounded-xl border-2 border-emerald-700 transition flex items-center justify-between cursor-pointer shadow-md active:scale-[0.99]">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white text-emerald-700 p-2 rounded-lg shadow-sm">
+                    <Upload className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-black tracking-wide">استعادة البيانات - Restore</div>
+                    <div className="text-[11px] text-emerald-100 font-bold">استرجاع داتا المحل بالكامل بضغطة زر عند تغيّر الجهاز أو الصيانة</div>
+                  </div>
+                </div>
+                <span className="bg-white text-emerald-900 text-xs px-3 py-1.5 rounded-lg font-black shrink-0 shadow-sm">استعادة Restore ⬆️</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
             {/* Auto Save Excel File Connection */}
             <button
               type="button"
@@ -306,42 +352,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                   <div className="text-[10px] text-slate-600">تحميل نسخة فوريّة بجميع الشيتات (المنتجات، المبيعات، تفاصيل الأصناف، الموظفين)</div>
                 </div>
               </div>
-              <span className="text-xs bg-emerald-600 text-white px-3 py-1 rounded-lg font-bold">تحميل الآن 📊</span>
+              <span className="text-xs bg-emerald-600 text-white px-3 py-1 rounded-lg font-bold">تحميل إكسيل 📊</span>
             </button>
-
-            {/* Download Backup JSON */}
-            <button
-              type="button"
-              onClick={() => exportBackupJSON(systemData)}
-              className="w-full bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold p-3.5 rounded-xl border border-slate-200 transition flex items-center justify-between cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5">
-                <Download className="w-5 h-5 text-blue-600" />
-                <div className="text-right">
-                  <div className="text-xs font-bold">تحميل نسخة احتياطية (JSON)</div>
-                  <div className="text-[10px] text-slate-500">تنزيل كامل البيانات على جهاز الكمبيوتر</div>
-                </div>
-              </div>
-              <span className="text-xs text-blue-600 font-bold">تحميل ⬇️</span>
-            </button>
-
-            {/* Restore Backup */}
-            <label className="w-full bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold p-3.5 rounded-xl border border-slate-200 transition flex items-center justify-between cursor-pointer">
-              <div className="flex items-center gap-2.5">
-                <Upload className="w-5 h-5 text-emerald-600" />
-                <div className="text-right">
-                  <div className="text-xs font-bold">استرجاع نسخة من الكمبيوتر</div>
-                  <div className="text-[10px] text-slate-500">رفع ملف JSON سابق لاستعادة بيانات المحل</div>
-                </div>
-              </div>
-              <span className="text-xs text-emerald-600 font-bold">استرجاع ⬆️</span>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImportFile}
-                className="hidden"
-              />
-            </label>
 
             {/* Reset Defaults */}
             <button
