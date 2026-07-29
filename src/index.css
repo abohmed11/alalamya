@@ -1,61 +1,154 @@
 @import "tailwindcss";
 
 @layer base {
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f1f5f9;
-    color: #0f172a;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
+  :root {
+    color-scheme: light;
   }
 
-  /* Enhance text contrast for older Windows 7 screens */
-  p, span, label, td, th, div, input, select, button {
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, Arial, sans-serif !important;
+    background-color: #cbd5e1 !important; /* Strong dark silver-gray background */
+    color: #000000 !important; /* 100% Pure Black text */
+    -webkit-font-smoothing: antialiased;
+    font-weight: 600 !important; /* Bold default weight so text never looks thin or faded */
+  }
+
+  /* Force pure solid black on all text elements with high weight */
+  p, span, label, td, th, div, h1, h2, h3, h4, h5, h6, input, select, textarea, button {
+    color: #000000;
     -webkit-text-size-adjust: 100%;
   }
 
-  /* Make muted text darker for legacy TN/LCD monitors */
-  .text-gray-400, .text-slate-400, .text-gray-500, .text-slate-500 {
-    color: #334155 !important;
+  /* Eliminate faint muted text completely */
+  .text-gray-400, .text-slate-400, .text-gray-500, .text-slate-500, .text-zinc-400, .text-zinc-500,
+  .text-gray-600, .text-slate-600, .text-gray-700, .text-slate-700 {
+    color: #000000 !important; /* Pure black text */
+    font-weight: 700 !important;
   }
 
-  .text-gray-600, .text-slate-600 {
-    color: #1e293b !important;
+  /* Ultra-high contrast 2px sharp dark borders on all cards and elements */
+  .border, .border-t, .border-b, .border-l, .border-r,
+  .border-gray-100, .border-slate-100, .border-gray-200, .border-slate-200, .border-gray-300, .border-slate-300 {
+    border-color: #334155 !important; /* Dark Slate border */
+    border-width: 1.5px !important;
   }
 
-  /* Make borders clearer and more distinct */
-  .border-gray-100, .border-slate-100, .border-gray-200, .border-slate-200 {
-    border-color: #cbd5e1 !important;
-  }
-
-  /* Ensure card backgrounds are solid white with crisp contrast */
+  /* Solid crisp white card backgrounds with heavy dark shadow & outline */
   .bg-white {
     background-color: #ffffff !important;
+    border: 2px solid #334155 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
   }
 
-  .bg-gray-50, .bg-slate-50 {
-    background-color: #f8fafc !important;
+  .bg-gray-50, .bg-slate-50, .bg-slate-100, .bg-gray-100 {
+    background-color: #e2e8f0 !important;
+    border: 1px solid #475569 !important;
   }
 
-  /* Enhance focus outlines for high visibility */
-  *:focus {
-    outline-color: #2563eb;
+  /* VIVID HIGH-SATURATION ACCENT COLORS (SUPER CLEAR ON ANY MONITOR) */
+  /* Blue Buttons & Badges */
+  .bg-blue-600, .bg-blue-500, .bg-indigo-600 {
+    background-color: #0044ff !important; /* Electric Blue */
+    color: #ffffff !important;
+    font-weight: 800 !important;
+  }
+  .bg-blue-50, .bg-blue-100 {
+    background-color: #bfdbfe !important; /* Strong Blue Tint */
+    border: 2px solid #1d4ed8 !important;
+  }
+  .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900 {
+    color: #002299 !important;
+    font-weight: 800 !important;
+  }
+
+  /* Green Buttons & Badges */
+  .bg-emerald-600, .bg-green-600, .bg-emerald-500, .bg-green-500 {
+    background-color: #008800 !important; /* Vivid Pure Green */
+    color: #ffffff !important;
+    font-weight: 800 !important;
+  }
+  .bg-emerald-50, .bg-green-50, .bg-emerald-100, .bg-green-100 {
+    background-color: #a7f3d0 !important; /* Strong Green Tint */
+    border: 2px solid #047857 !important;
+  }
+  .text-emerald-600, .text-emerald-700, .text-green-700, .text-emerald-800 {
+    color: #005500 !important;
+    font-weight: 800 !important;
+  }
+
+  /* Red Danger Buttons & Alerts */
+  .bg-red-600, .bg-red-500, .bg-rose-600 {
+    background-color: #cc0000 !important; /* Pure Red */
+    color: #ffffff !important;
+    font-weight: 800 !important;
+  }
+  .bg-red-50, .bg-rose-50, .bg-red-100 {
+    background-color: #fecaca !important;
+    border: 2px solid #dc2626 !important;
+  }
+  .text-red-600, .text-red-700, .text-red-800 {
+    color: #880000 !important;
+    font-weight: 800 !important;
+  }
+
+  /* Orange / Yellow Warnings */
+  .bg-amber-500, .bg-amber-600, .bg-yellow-500 {
+    background-color: #d97706 !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+  }
+  .bg-amber-50, .bg-yellow-50, .bg-amber-100 {
+    background-color: #fde68a !important;
+    border: 2px solid #d97706 !important;
+  }
+  .text-amber-700, .text-amber-800, .text-yellow-800 {
+    color: #78350f !important;
+    font-weight: 800 !important;
+  }
+
+  /* Form Inputs (Extreme Visibility) */
+  input, select, textarea {
+    border: 2px solid #1e293b !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border: 3px solid #0044ff !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(0, 68, 255, 0.3) !important;
+  }
+
+  /* Table Headers & Rows for Extreme Clarity */
+  th {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    border: 1px solid #334155 !important;
+  }
+
+  td {
+    border: 1px solid #64748b !important;
+    color: #000000 !important;
+    font-weight: 600 !important;
   }
 }
 
-/* Custom crisp scrollbar for Windows */
+/* High contrast sharp scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
 }
 ::-webkit-scrollbar-track {
-  background: #e2e8f0;
+  background: #94a3b8;
 }
 ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
+  background: #1e293b;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #000000;
 }
+
