@@ -1,1 +1,61 @@
 @import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Enhance text contrast for older Windows 7 screens */
+  p, span, label, td, th, div, input, select, button {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Make muted text darker for legacy TN/LCD monitors */
+  .text-gray-400, .text-slate-400, .text-gray-500, .text-slate-500 {
+    color: #334155 !important;
+  }
+
+  .text-gray-600, .text-slate-600 {
+    color: #1e293b !important;
+  }
+
+  /* Make borders clearer and more distinct */
+  .border-gray-100, .border-slate-100, .border-gray-200, .border-slate-200 {
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Ensure card backgrounds are solid white with crisp contrast */
+  .bg-white {
+    background-color: #ffffff !important;
+  }
+
+  .bg-gray-50, .bg-slate-50 {
+    background-color: #f8fafc !important;
+  }
+
+  /* Enhance focus outlines for high visibility */
+  *:focus {
+    outline-color: #2563eb;
+  }
+}
+
+/* Custom crisp scrollbar for Windows */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
