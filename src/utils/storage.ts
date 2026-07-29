@@ -1,5 +1,6 @@
 import { SystemData, Invoice } from '../types';
 import { INITIAL_DATA } from '../data/initialData';
+import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = 'EL_ALAMIA_MATTRESSES_DATA_V2';
 const IDB_NAME = 'ElAlamiaStoreDB';
@@ -73,6 +74,7 @@ export function loadSystemData(): SystemData {
 
 // --- Local File Handle Auto-Sync (File System Access API) ---
 let fileHandle: any = null;
+let excelFileHandle: any = null;
 
 export async function selectAutoSaveFile(): Promise<string | null> {
   try {
@@ -97,17 +99,77 @@ export async function selectAutoSaveFile(): Promise<string | null> {
   }
 }
 
-export async function saveToLocalFileHandle(data: SystemData): Promise<boolean> {
-  if (!fileHandle) return false;
+export async function selectAutoSaveExcelFile(currentData?: SystemData): Promise<string | null> {
   try {
-    const writable = await fileHandle.createWritable();
-    await writable.write(JSON.stringify(data, null, 2));
-    await writable.close();
-    return true;
-  } catch (err) {
-    console.warn('Auto save to local file handle failed:', err);
-    return false;
+    if ('showSaveFilePicker' in window) {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: `قاعدة_بيانات_المحل_على_سطح_المكتب.xlsx`,
+        types: [{
+          description: 'جدول إكسيل Microsoft Excel (.xlsx)',
+          accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+        }]
+      });
+      excelFileHandle = handle;
+      
+      // Write initial state immediately to the created Excel file on Desktop
+      if (currentData) {
+        try {
+          const wb = buildExcelWorkbook(currentData);
+          const arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          const writable = await handle.createWritable();
+          await writable.write(arrayBuffer);
+          await writable.close();
+        } catch (e) {
+          console.warn('Failed to write initial Excel content:', e);
+        }
+      }
+
+      return handle.name;
+    } else {
+      throw new Error('متصفحك لا يدعم وصول الملفات المباشر (File System Access API). استخدم متصفح Chrome أو Edge.');
+    }
+  } catch (err: any) {
+    if (err.name !== 'AbortError') {
+      console.error('Excel File picker error:', err);
+    }
+    return null;
   }
+}
+
+export function getConnectedExcelFileName(): string | null {
+  return excelFileHandle?.name || null;
+}
+
+export async function saveToLocalFileHandle(data: SystemData): Promise<boolean> {
+  let success = false;
+  
+  // 1. Sync JSON database file handle if connected
+  if (fileHandle) {
+    try {
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(data, null, 2));
+      await writable.close();
+      success = true;
+    } catch (err) {
+      console.warn('Auto save to JSON file handle failed:', err);
+    }
+  }
+
+  // 2. Sync Excel (.xlsx) file handle if connected
+  if (excelFileHandle) {
+    try {
+      const wb = buildExcelWorkbook(data);
+      const arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const writable = await excelFileHandle.createWritable();
+      await writable.write(arrayBuffer);
+      await writable.close();
+      success = true;
+    } catch (err) {
+      console.warn('Auto save to Excel file handle failed:', err);
+    }
+  }
+
+  return success;
 }
 
 export function saveSystemData(data: SystemData): void {
@@ -172,6 +234,96 @@ export function formatArabicDateShort(isoString: string): string {
     month: '2-digit',
     day: '2-digit',
   });
+}
+
+export function buildExcelWorkbook(data: SystemData): XLSX.WorkBook {
+  const wb = XLSX.utils.book_new();
+
+  // 1. المنتجات والمخزون
+  const productsData = (data.items || []).map((item, idx) => ({
+    'م': idx + 1,
+    'الكود / SKU': item.sku || '',
+    'الماركة / الشركة': item.brand || '',
+    'اسم موديل المرتبة': item.modelName || '',
+    'نوع المرتبة': item.type || '',
+    'المقاس (العرض×الطول)': `${item.width}×${item.length} سم`,
+    'الارتفاع (سم)': item.height || 0,
+    'سعر التكلفة (ج.م)': item.costPrice || 0,
+    'سعر البيع (ج.م)': item.sellingPrice || 0,
+    'الكمية الحالية بالمخزن': item.stockQuantity || 0,
+    'حد التنبيه': item.minStockAlert || 0,
+    'إجمالي التكلفة (ج.م)': (item.costPrice || 0) * (item.stockQuantity || 0),
+    'إجمالي البيع (ج.م)': (item.sellingPrice || 0) * (item.stockQuantity || 0),
+    'حالة المخزون': (item.stockQuantity || 0) <= (item.minStockAlert || 0) ? 'نقص بالمخزن ⚠️' : 'متوفر ✅'
+  }));
+  const wsProducts = XLSX.utils.json_to_sheet(productsData);
+  XLSX.utils.book_append_sheet(wb, wsProducts, 'المنتجات والمخزون');
+
+  // 2. المبيعات والفواتير
+  const invoicesData = (data.invoices || []).map((inv, idx) => ({
+    'م': idx + 1,
+    'رقم الفاتورة': inv.invoiceNumber || '',
+    'التاريخ والوقت': formatArabicDateTime(inv.date),
+    'اسم العميل': inv.customerName || '',
+    'رقم هاتف العميل': inv.customerPhone || '',
+    'إجمالي الفاتورة (ج.م)': inv.subtotal || 0,
+    'الخصم (ج.م)': inv.discountAmount || 0,
+    'مصاريف التوصيل (ج.م)': inv.deliveryFee || 0,
+    'الصافي النهائي (ج.م)': inv.netTotal || 0,
+    'المدفوع (ج.م)': inv.paidAmount || 0,
+    'المتبقي / المتبقي آجل (ج.م)': inv.remainingAmount || 0,
+    'طريقة الدفع': inv.paymentMethod === 'cash' ? 'نقداً (كاش)' : inv.paymentMethod === 'visa' ? 'فيزا / كارت' : inv.paymentMethod === 'partial' ? 'دفعة + آجل' : 'تقسيط / آجل',
+    'الموظف البائع': inv.employeeName || '',
+    'حالة الفاتورة': inv.status === 'completed' ? 'مكتملة ✅' : 'ملغاة ❌',
+    'ملاحظات': inv.notes || ''
+  }));
+  const wsInvoices = XLSX.utils.json_to_sheet(invoicesData);
+  XLSX.utils.book_append_sheet(wb, wsInvoices, 'المبيعات والفواتير');
+
+  // 3. تفاصيل أصناف الفواتير
+  const invoiceItemsData: any[] = [];
+  (data.invoices || []).forEach((inv) => {
+    (inv.items || []).forEach((item) => {
+      invoiceItemsData.push({
+        'رقم الفاتورة': inv.invoiceNumber,
+        'التاريخ': formatArabicDateShort(inv.date),
+        'اسم العميل': inv.customerName,
+        'الماركة': item.brand,
+        'اسم الموديل': item.modelName,
+        'النوع': item.type,
+        'المقاس والارتفاع': item.dimensionsText,
+        'الكمية المباعة': item.quantity,
+        'سعر الوحدة (ج.م)': item.unitPrice,
+        'الإجمالي (ج.م)': item.totalPrice
+      });
+    });
+  });
+  const wsInvoiceItems = XLSX.utils.json_to_sheet(invoiceItemsData);
+  XLSX.utils.book_append_sheet(wb, wsInvoiceItems, 'تفاصيل الأصناف المباعة');
+
+  // 4. الموظفين
+  const employeesData = (data.employees || []).map((emp, idx) => ({
+    'م': idx + 1,
+    'اسم الموظف': emp.name || '',
+    'الدور / الصلاحية': emp.role === 'admin' ? 'مدير النظام' : emp.role === 'accountant' ? 'محاسب' : 'بائع',
+    'رقم الهاتف': emp.phone || '',
+    'الحالة': emp.isActive ? 'يعمل 🟢' : 'موقوف 🔴'
+  }));
+  const wsEmployees = XLSX.utils.json_to_sheet(employeesData);
+  XLSX.utils.book_append_sheet(wb, wsEmployees, 'الموظفين والصلاحيات');
+
+  return wb;
+}
+
+export function exportSystemDataToExcel(data: SystemData): void {
+  try {
+    const wb = buildExcelWorkbook(data);
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `مؤسسة_العالمية_تقرير_إكسيل_شامل_${dateStr}.xlsx`);
+  } catch (err) {
+    console.error('Error exporting excel:', err);
+    alert('حدث خطأ أثناء تصدير ملف الإكسيل.');
+  }
 }
 
 export function exportBackupJSON(data: SystemData): void {

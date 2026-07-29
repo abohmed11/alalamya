@@ -8,6 +8,7 @@ import {
   Save,
   CheckCircle2,
   FileJson,
+  FileSpreadsheet,
   Building,
   Phone,
   MapPin,
@@ -16,7 +17,7 @@ import {
   Info,
 } from 'lucide-react';
 import { SystemData, StoreSettings } from '../types';
-import { exportBackupJSON, importBackupJSON, formatCurrency, selectAutoSaveFile } from '../utils/storage';
+import { exportBackupJSON, importBackupJSON, exportSystemDataToExcel, formatCurrency, selectAutoSaveFile, selectAutoSaveExcelFile } from '../utils/storage';
 
 interface AdminSettingsViewProps {
   systemData: SystemData;
@@ -34,17 +35,31 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   const [settings, setSettings] = useState<StoreSettings>(systemData.settings);
   const [toastMsg, setToastMsg] = useState('');
   const [autoSaveFileName, setAutoSaveFileName] = useState<string | null>(null);
+  const [autoSaveExcelName, setAutoSaveExcelName] = useState<string | null>(null);
 
   const handleSelectAutoSaveFile = async () => {
     try {
       const fileName = await selectAutoSaveFile();
       if (fileName) {
         setAutoSaveFileName(fileName);
-        setToastMsg(`تم ربط الحفظ التلقائي المباشر بملف: ${fileName}`);
+        setToastMsg(`تم ربط الحفظ التلقائي بملف JSON: ${fileName}`);
         setTimeout(() => setToastMsg(''), 5000);
       }
     } catch (err: any) {
       alert(err?.message || 'تعذر تحديد ملف الحفظ التلقائي.');
+    }
+  };
+
+  const handleSelectAutoSaveExcelFile = async () => {
+    try {
+      const fileName = await selectAutoSaveExcelFile(systemData);
+      if (fileName) {
+        setAutoSaveExcelName(fileName);
+        setToastMsg(`تم إنشاء وربط ملف إكسيل (.xlsx) على سطح المكتب بنجاح: ${fileName}`);
+        setTimeout(() => setToastMsg(''), 6000);
+      }
+    } catch (err: any) {
+      alert(err?.message || 'تعذر تحديد ملف الإكسيل للحفظ التلقائي.');
     }
   };
 
@@ -236,7 +251,29 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           </p>
 
           <div className="space-y-3 pt-2">
-            {/* Auto Save File Connection */}
+            {/* Auto Save Excel File Connection */}
+            <button
+              type="button"
+              onClick={handleSelectAutoSaveExcelFile}
+              className="w-full bg-emerald-100 hover:bg-emerald-200 text-emerald-950 font-bold p-3.5 rounded-xl border-2 border-emerald-600 transition flex items-center justify-between cursor-pointer shadow-sm"
+            >
+              <div className="flex items-center gap-2.5">
+                <FileSpreadsheet className="w-6 h-6 text-emerald-800" />
+                <div className="text-right">
+                  <div className="text-sm font-black text-emerald-950">
+                    {autoSaveExcelName ? `مُتصل بملف إكسيل: ${autoSaveExcelName}` : 'ربط ملف إكسيل للحفظ التلقائي المباشر (.xlsx)'}
+                  </div>
+                  <div className="text-[11px] text-emerald-900 font-bold">
+                    {autoSaveExcelName ? 'يتم كتابة وتعديل أوراق الإكسيل تلقائياً وفورياً مع كل عملية جديدة 🟢' : 'حدد ملف إكسيل على جهازك ليقوم النظام بتحديثه وتنسيقه تلقائياً مع كل فاتورة أو تغيير!'}
+                  </div>
+                </div>
+              </div>
+              <span className="text-xs bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold">
+                {autoSaveExcelName ? 'مُتصل 🟢' : 'ربط إكسيل 📂'}
+              </span>
+            </button>
+
+            {/* Auto Save JSON File Connection */}
             <button
               type="button"
               onClick={handleSelectAutoSaveFile}
@@ -246,7 +283,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                 <FileJson className="w-5 h-5 text-blue-600" />
                 <div className="text-right">
                   <div className="text-xs font-bold">
-                    {autoSaveFileName ? `متصل بالملف: ${autoSaveFileName}` : 'تحديد ملف للحفظ التلقائي المباشر على الجهاز'}
+                    {autoSaveFileName ? `متصل بملف JSON: ${autoSaveFileName}` : 'ربط ملف JSON للحفظ التلقائي على الجهاز'}
                   </div>
                   <div className="text-[10px] text-blue-700">
                     {autoSaveFileName ? 'يتم حفظ كل عملية تلقائياً داخل هذا الملف بفرمت JSON' : 'اختر ملف .json على الفلاشة أو الهارد ليتم كتابة أي عملية جديدة فيه تلقائياً'}
@@ -256,7 +293,23 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               <span className="text-xs text-blue-600 font-bold">{autoSaveFileName ? 'مُتصل 🟢' : 'تحديد 📂'}</span>
             </button>
 
-            {/* Download Backup */}
+            {/* Download Excel Sheet Instant Export */}
+            <button
+              type="button"
+              onClick={() => exportSystemDataToExcel(systemData)}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold p-3.5 rounded-xl border border-slate-300 transition flex items-center justify-between cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <Download className="w-5 h-5 text-emerald-700" />
+                <div className="text-right">
+                  <div className="text-xs font-bold text-slate-900">تنزيل وتصدير ملف إكسيل حالي (.xlsx Excel)</div>
+                  <div className="text-[10px] text-slate-600">تحميل نسخة فوريّة بجميع الشيتات (المنتجات، المبيعات، تفاصيل الأصناف، الموظفين)</div>
+                </div>
+              </div>
+              <span className="text-xs bg-emerald-600 text-white px-3 py-1 rounded-lg font-bold">تحميل الآن 📊</span>
+            </button>
+
+            {/* Download Backup JSON */}
             <button
               type="button"
               onClick={() => exportBackupJSON(systemData)}
