@@ -18,6 +18,9 @@ import {
   Percent,
   CreditCard,
   Building,
+  Maximize2,
+  X,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   MattressItem,
@@ -72,6 +75,10 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
   const [lastCreatedInvoice, setLastCreatedInvoice] = useState<Invoice | null>(null);
   const [successToast, setSuccessToast] = useState(false);
 
+  // View Mode & Size Selection Modal State
+  const [catalogDisplayMode, setCatalogDisplayMode] = useState<'grouped' | 'flat'>('grouped');
+  const [selectedModelForSizes, setSelectedModelForSizes] = useState<{ brand: string; modelName: string } | null>(null);
+
   // Filtered Warehouse Mattresses
   const filteredMattresses = useMemo(() => {
     return items.filter((item) => {
@@ -88,6 +95,60 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
       return matchQuery && matchBrand;
     });
   }, [items, searchQuery, selectedBrand]);
+
+  // Group Mattresses by Brand and Model Name
+  const groupedMattressModels = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        brand: string;
+        modelName: string;
+        type: string;
+        items: MattressItem[];
+        minPrice: number;
+        maxPrice: number;
+        totalStock: number;
+      }
+    >();
+
+    filteredMattresses.forEach((item) => {
+      const key = `${item.brand}___${item.modelName}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          brand: item.brand,
+          modelName: item.modelName,
+          type: item.type,
+          items: [],
+          minPrice: item.sellingPrice,
+          maxPrice: item.sellingPrice,
+          totalStock: 0,
+        });
+      }
+      const entry = map.get(key)!;
+      entry.items.push(item);
+      entry.totalStock += item.stockQuantity;
+      if (item.sellingPrice < entry.minPrice) entry.minPrice = item.sellingPrice;
+      if (item.sellingPrice > entry.maxPrice) entry.maxPrice = item.sellingPrice;
+    });
+
+    map.forEach((val) => {
+      val.items.sort((a, b) => a.width - b.width);
+    });
+
+    return Array.from(map.values());
+  }, [filteredMattresses]);
+
+  // Active items for the currently selected model modal
+  const activeModelItems = useMemo(() => {
+    if (!selectedModelForSizes) return [];
+    return items
+      .filter(
+        (i) =>
+          i.brand === selectedModelForSizes.brand &&
+          i.modelName === selectedModelForSizes.modelName
+      )
+      .sort((a, b) => a.width - b.width);
+  }, [items, selectedModelForSizes]);
 
   const uniqueBrands = useMemo(() => {
     return Array.from(new Set(items.map((i) => i.brand)));
@@ -270,14 +331,39 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Side: Mattress Stock Selection (7 cols) */}
         <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
             <div className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-blue-600" />
               <h2 className="text-base font-bold text-slate-900">معرض المراتب والمخزون المتاح</h2>
             </div>
-            <span className="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-medium border border-slate-200">
-              {filteredMattresses.length} صنف متوفر
-            </span>
+            
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+              <button
+                type="button"
+                onClick={() => setCatalogDisplayMode('grouped')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  catalogDisplayMode === 'grouped'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>خيارات المقاسات (الموديلات)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCatalogDisplayMode('flat')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  catalogDisplayMode === 'flat'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>عرض تفصيلي للمخزن</span>
+              </button>
+            </div>
           </div>
 
           {/* Search & Brand Filter Bar */}
@@ -307,80 +393,166 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
             </select>
           </div>
 
-          {/* Mattresses Grid */}
+          {/* Mattresses Display (Grouped or Flat) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[580px] overflow-y-auto pr-1 scrollbar-thin">
-            {filteredMattresses.map((item) => {
-              const inCart = cartItems.find((ci) => ci.mattressId === item.id);
-              const isLowStock = item.stockQuantity <= item.minStockAlert;
-              const isOutStock = item.stockQuantity <= 0;
+            {catalogDisplayMode === 'grouped' ? (
+              // Grouped Model View
+              groupedMattressModels.map((modelGroup) => {
+                const availableSizesCount = modelGroup.items.length;
+                const totalStock = modelGroup.totalStock;
+                const isOutStock = totalStock <= 0;
 
-              return (
-                <div
-                  key={item.id}
-                  className={`p-3.5 rounded-xl border transition flex flex-col justify-between ${
-                    isOutStock
-                      ? 'bg-slate-50 border-slate-200 opacity-60'
-                      : inCart
-                      ? 'bg-blue-50/70 border-blue-400 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
-                        {item.brand}
-                      </span>
-                      <span
-                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
-                          isOutStock
-                            ? 'bg-red-50 text-red-700 border border-red-100'
-                            : isLowStock
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                        }`}
-                      >
-                        {isOutStock ? 'نفذت الكمية' : `متبقي: ${item.stockQuantity} قطعة`}
-                      </span>
-                    </div>
-
-                    <h3 className="text-sm font-bold text-slate-900 mt-1.5 line-clamp-1">
-                      {item.modelName}
-                    </h3>
-
-                    <div className="text-xs text-slate-500 mt-1 flex flex-wrap gap-2 font-medium">
-                      <span>النوع: {item.type}</span>
-                      <span className="text-slate-700 font-semibold dir-ltr">
-                        📏 {item.width}×{item.length} سم (ع {item.height} سم)
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100">
+                return (
+                  <div
+                    key={`${modelGroup.brand}-${modelGroup.modelName}`}
+                    className={`p-4 rounded-xl border transition flex flex-col justify-between ${
+                      isOutStock
+                        ? 'bg-slate-50 border-slate-200 opacity-65'
+                        : 'bg-gradient-to-br from-white to-slate-50/80 border-slate-200 hover:border-blue-300 shadow-xs'
+                    }`}
+                  >
                     <div>
-                      <div className="text-[10px] text-slate-400 font-medium">سعر البيع:</div>
-                      <div className="text-base font-bold text-slate-900">
-                        {formatCurrency(item.sellingPrice)}
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg">
+                          {modelGroup.brand}
+                        </span>
+                        <span
+                          className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                            isOutStock
+                              ? 'bg-red-50 text-red-700 border border-red-100'
+                              : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          }`}
+                        >
+                          {isOutStock ? 'نفذت الكمية بالكامل' : `${totalStock} قطعة متاحة`}
+                        </span>
+                      </div>
+
+                      <h3 className="text-base font-black text-slate-900 mt-2">
+                        مرتبة {modelGroup.modelName}
+                      </h3>
+
+                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                        النوع: {modelGroup.type}
+                      </p>
+
+                      <div className="mt-3 bg-blue-50/60 p-2.5 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
+                        <span className="text-blue-900 font-bold flex items-center gap-1">
+                          📏 {availableSizesCount} مقاسات مختلفة
+                        </span>
+                        <span className="text-slate-600 font-semibold">
+                          من {formatCurrency(modelGroup.minPrice)}
+                        </span>
                       </div>
                     </div>
 
                     <button
-                      onClick={() => addToCart(item)}
-                      disabled={isOutStock}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
-                        isOutStock
-                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                          : inCart
-                          ? 'bg-blue-600 text-white font-bold shadow-xs'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
-                      }`}
+                      type="button"
+                      onClick={() =>
+                        setSelectedModelForSizes({
+                          brand: modelGroup.brand,
+                          modelName: modelGroup.modelName,
+                        })
+                      }
+                      className="mt-3.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>{inCart ? `إضافة (${inCart.quantity})` : 'إضافة للفاتورة'}</span>
+                      <Maximize2 className="w-4 h-4 text-blue-200" />
+                      <span>اختيار المقاس المطلوب 📐</span>
                     </button>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              // Detailed Flat View
+              filteredMattresses.map((item) => {
+                const inCart = cartItems.find((ci) => ci.mattressId === item.id);
+                const isLowStock = item.stockQuantity <= item.minStockAlert;
+                const isOutStock = item.stockQuantity <= 0;
+
+                return (
+                  <div
+                    key={item.id}
+                    className={`p-3.5 rounded-xl border transition flex flex-col justify-between ${
+                      isOutStock
+                        ? 'bg-slate-50 border-slate-200 opacity-60'
+                        : inCart
+                        ? 'bg-blue-50/70 border-blue-400 shadow-xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
+                          {item.brand}
+                        </span>
+                        <span
+                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
+                            isOutStock
+                              ? 'bg-red-50 text-red-700 border border-red-100'
+                              : isLowStock
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          }`}
+                        >
+                          {isOutStock ? 'نفذت الكمية' : `متبقي: ${item.stockQuantity} قطعة`}
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm font-bold text-slate-900 mt-1.5 line-clamp-1">
+                        {item.modelName}
+                      </h3>
+
+                      <div className="text-xs text-slate-500 mt-1 flex flex-wrap gap-2 font-medium">
+                        <span>النوع: {item.type}</span>
+                        <span className="text-slate-700 font-semibold dir-ltr">
+                          📏 {item.width}×{item.length} سم (ع {item.height} سم)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100">
+                      <div>
+                        <div className="text-[10px] text-slate-400 font-medium">سعر البيع:</div>
+                        <div className="text-base font-bold text-slate-900">
+                          {formatCurrency(item.sellingPrice)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedModelForSizes({
+                              brand: item.brand,
+                              modelName: item.modelName,
+                            })
+                          }
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                          title="عرض مقاسات هذا الموديل"
+                        >
+                          📏
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => addToCart(item)}
+                          disabled={isOutStock}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                            isOutStock
+                              ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                              : inCart
+                              ? 'bg-blue-600 text-white font-bold shadow-xs'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
+                          }`}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{inCart ? `إضافة (${inCart.quantity})` : 'إضافة للفاتورة'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
 
             {filteredMattresses.length === 0 && (
               <div className="col-span-full text-center py-12 text-slate-400 text-xs">
@@ -624,6 +796,136 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
           </button>
         </form>
       </div>
+
+      {/* Size Picker Modal */}
+      {selectedModelForSizes && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white border border-blue-200 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl text-slate-900">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-blue-100 bg-gradient-to-r from-blue-900 via-slate-900 to-blue-950 text-white">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-600 rounded-xl">
+                  <Maximize2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    مرتبة {selectedModelForSizes.modelName} ({selectedModelForSizes.brand})
+                  </h3>
+                  <p className="text-xs text-blue-200 mt-0.5">
+                    اختر المقاس والكمية المطلوبة لإضافتها لفاتورة العميل بسرعة
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedModelForSizes(null)}
+                className="text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: Available Sizes Grid */}
+            <div className="p-5 max-h-[70vh] overflow-y-auto space-y-3">
+              <div className="text-xs font-black text-slate-700 mb-2">
+                المقاسات والأسعار المتوفرة بمخزن هذا الموديل ({activeModelItems.length} مقاسات):
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {activeModelItems.map((item) => {
+                  const inCart = cartItems.find((ci) => ci.mattressId === item.id);
+                  const isOutStock = item.stockQuantity <= 0;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-3.5 rounded-xl border transition flex flex-col justify-between ${
+                        isOutStock
+                          ? 'bg-slate-50 border-slate-200 opacity-60'
+                          : inCart
+                          ? 'bg-blue-50/80 border-blue-400 shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-blue-300 shadow-2xs'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-sm font-black text-slate-900 dir-ltr">
+                            📏 {item.width} × {item.length} سم
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              isOutStock
+                                ? 'bg-red-50 text-red-700 border border-red-100'
+                                : 'bg-emerald-50 text-emerald-800 border border-emerald-100'
+                            }`}
+                          >
+                            {isOutStock ? 'نفذت' : `متبقي: ${item.stockQuantity}`}
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-slate-500 mt-1 font-medium">
+                          ارتفاع المرتبة: <span className="text-slate-700 font-bold">{item.height} سم</span>
+                        </div>
+
+                        {inCart && (
+                          <div className="mt-2 bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-1 rounded-lg border border-blue-200">
+                            مضاف للفاتورة حالياً: ({inCart.quantity} قطعة)
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+                        <div>
+                          <div className="text-[10px] text-slate-400">سعر البيع:</div>
+                          <div className="text-sm font-black text-blue-700">
+                            {formatCurrency(item.sellingPrice)}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => addToCart(item)}
+                          disabled={isOutStock}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                            isOutStock
+                              ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                              : inCart
+                              ? 'bg-blue-600 text-white shadow-xs hover:bg-blue-700'
+                              : 'bg-slate-900 hover:bg-slate-800 text-white shadow-2xs'
+                          }`}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{inCart ? `إضافة أخرى (+1)` : 'إضافة للفاتورة'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {activeModelItems.length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  لا توجد مقاسات مسجلة لهذا الموديل في المخزن حالياً.
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <span className="text-xs text-slate-500 font-medium">
+                إجمالي الأصناف بالفاتورة الحالية: {cartItems.length} صنف
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedModelForSizes(null)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
+              >
+                تم الإنتهاء والمتابعة للفاتورة 👍
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

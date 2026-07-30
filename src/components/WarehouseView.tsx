@@ -40,9 +40,10 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MattressItem | null>(null);
 
-  // Form Fields
+  // Form Fields Single Item
   const [sku, setSku] = useState('');
   const [brand, setBrand] = useState('العالمية (El-Alamia Special)');
   const [modelName, setModelName] = useState('');
@@ -55,6 +56,92 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
   const [sellingPrice, setSellingPrice] = useState<number>(4500);
   const [minStockAlert, setMinStockAlert] = useState<number>(2);
   const [notes, setNotes] = useState('');
+
+  // Batch Sizes Form Fields
+  const [batchBrand, setBatchBrand] = useState('يانسن');
+  const [batchModelName, setBatchModelName] = useState('');
+  const [batchType, setBatchType] = useState('سوست منفصلة');
+  const [batchLength, setBatchLength] = useState<number>(195);
+  const [batchHeight, setBatchHeight] = useState<number>(25);
+  const [baseCost160, setBaseCost160] = useState<number>(3000);
+  const [basePrice160, setBasePrice160] = useState<number>(4500);
+  const [defaultStockPerSize, setDefaultStockPerSize] = useState<number>(5);
+
+  // Available width presets (widths in cm)
+  const STANDARD_WIDTHS = [90, 100, 110, 120, 140, 150, 160, 170, 180, 200];
+  const [activeBatchWidths, setActiveBatchWidths] = useState<number[]>([90, 100, 120, 150, 160, 180, 200]);
+
+  const toggleBatchWidth = (w: number) => {
+    if (activeBatchWidths.includes(w)) {
+      if (activeBatchWidths.length === 1) {
+        alert('يرجى اختيار مقاس واحد على الأقل');
+        return;
+      }
+      setActiveBatchWidths(activeBatchWidths.filter((item) => item !== w));
+    } else {
+      setActiveBatchWidths([...activeBatchWidths, w].sort((a, b) => a - b));
+    }
+  };
+
+  const openBatchModal = () => {
+    setBatchBrand(uniqueBrands[0] || 'يانسن');
+    setBatchModelName('');
+    setBatchType('سوست منفصلة');
+    setBatchLength(195);
+    setBatchHeight(25);
+    setBaseCost160(3000);
+    setBasePrice160(4500);
+    setDefaultStockPerSize(5);
+    setActiveBatchWidths([90, 100, 120, 140, 150, 160, 180, 200]);
+    setIsBatchModalOpen(true);
+  };
+
+  const handleSaveBatchItems = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!batchModelName.trim()) {
+      alert('يرجى إدخال اسم الموديل للمرتبة (مثلاً: ماريوت، كتارا، ميديكال)');
+      return;
+    }
+
+    if (activeBatchWidths.length === 0) {
+      alert('يرجى تحديد المقاسات المراد إضافتها للمخزن');
+      return;
+    }
+
+    // Calculate prices proportional to width based on base price for 160cm
+    const now = Date.now();
+    activeBatchWidths.forEach((w, idx) => {
+      const ratio = w / 160;
+      const calculatedSellingPrice = Math.round((basePrice160 * ratio) / 50) * 50; // rounded to nearest 50
+      const calculatedCostPrice = Math.round((baseCost160 * ratio) / 50) * 50;
+
+      const brandCode = batchBrand.substring(0, 3).toUpperCase();
+      const modelCode = batchModelName.substring(0, 3).toUpperCase();
+
+      const itemData: MattressItem = {
+        id: `mat-${now}-${w}-${idx}`,
+        sku: `${brandCode}-${modelCode}-${w}-${batchHeight}`,
+        brand: batchBrand.trim(),
+        modelName: batchModelName.trim(),
+        type: batchType.trim(),
+        width: w,
+        length: Number(batchLength),
+        height: Number(batchHeight),
+        stockQuantity: Number(defaultStockPerSize),
+        costPrice: calculatedCostPrice,
+        sellingPrice: calculatedSellingPrice,
+        minStockAlert: 2,
+        notes: `تمت الإضافة التلقائية ضمن تشكيلة مقاسات موديل (${batchModelName})`,
+        updatedAt: new Date().toISOString(),
+      };
+
+      onAddItem(itemData);
+    });
+
+    setIsBatchModalOpen(false);
+    alert(`تمت إضافة عدد (${activeBatchWidths.length}) مقاساً بنجاح لموديل (${batchModelName}) في المخزن!`);
+  };
 
   const canEditPrices = activeEmployee.role === 'admin' || activeEmployee.permissions.includes('edit_prices');
 
@@ -184,6 +271,15 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={openBatchModal}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer"
+            title="إضافة جميع مقاسات المرتبة (من 90سم إلى 200سم) دفعة واحدة للمخزن"
+          >
+            <Maximize2 className="w-4 h-4" />
+            <span>إضافة مقاسات متعددة (دفعة واحدة) 📐</span>
+          </button>
+
+          <button
             onClick={() => exportInventoryToExcel(filteredItems)}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer"
           >
@@ -196,7 +292,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>إضافة مرتبة جديدة للمخزن</span>
+            <span>إضافة مرتبة فردية للمخزن</span>
           </button>
         </div>
       </div>
@@ -524,6 +620,220 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-xl cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Add Batch Sizes Modal */}
+      {isBatchModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white border border-indigo-200 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl text-slate-900">
+            <div className="flex items-center justify-between p-5 border-b border-indigo-100 bg-gradient-to-r from-indigo-900 to-slate-900 text-white">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-600 rounded-xl">
+                  <Maximize2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    إضافة مقاسات متعددة لمرتبة دفعة واحدة (Batch Generator)
+                    <span className="bg-indigo-500/30 text-indigo-200 text-[10px] px-2 py-0.5 rounded-full border border-indigo-400/30">
+                      توليد تلقائي
+                    </span>
+                  </h3>
+                  <p className="text-xs text-indigo-200 mt-0.5">
+                    اختر موديل المرتبة، وحدد مقاسات العرض المطلوبة لإضافتها كلها للمخزن بنقرة زر واحدة
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBatchModalOpen(false)}
+                className="text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBatchItems} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+              {/* Basic Model Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    الشركة / الماركة:
+                  </label>
+                  <input
+                    type="text"
+                    value={batchBrand}
+                    onChange={(e) => setBatchBrand(e.target.value)}
+                    required
+                    placeholder="مثال: يانسن، فوربد، تاكي، العالمية"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    اسم الموديل:
+                  </label>
+                  <input
+                    type="text"
+                    value={batchModelName}
+                    onChange={(e) => setBatchModelName(e.target.value)}
+                    required
+                    placeholder="مثال: ماريوت، كتارا، ميديال، اكسترا"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    نوع المرتبة / الحشو:
+                  </label>
+                  <select
+                    value={batchType}
+                    onChange={(e) => setBatchType(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
+                  >
+                    <option value="سوست منفصلة">سوست منفصلة (Pocket Springs)</option>
+                    <option value="سوست متصلة">سوست متصلة (Bonnell Springs)</option>
+                    <option value="إسفنج مضغوط (ميديكال)">إسفنج مضغوط (ميديكال)</option>
+                    <option value="لاتكس طبي وميموري فوم">لاتكس طبي وميموري فوم</option>
+                    <option value="تاكي هاي كلاس">تاكي هاي كلاس</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Standard Dimensions & Base Price Reference */}
+              <div className="bg-indigo-50/70 border border-indigo-200 p-4 rounded-xl space-y-3">
+                <div className="flex items-center justify-between border-b border-indigo-200/60 pb-2">
+                  <span className="text-xs font-black text-indigo-900 flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-indigo-600" />
+                    المواصفات القياسية وحساب الأسعار التلقائي:
+                  </span>
+                  <span className="text-[11px] text-indigo-700 font-semibold">
+                    (تُحسب أسعار المقاسات تلقائياً بناءً على مقاس 160 سم)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-600 font-bold mb-1">الطول الثابت (سم):</label>
+                    <input
+                      type="number"
+                      value={batchLength}
+                      onChange={(e) => setBatchLength(parseInt(e.target.value) || 195)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold text-center"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-600 font-bold mb-1">الارتفاع (سم):</label>
+                    <input
+                      type="number"
+                      value={batchHeight}
+                      onChange={(e) => setBatchHeight(parseInt(e.target.value) || 25)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold text-center"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-600 font-bold mb-1">الكمية لكل مقاس:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={defaultStockPerSize}
+                      onChange={(e) => setDefaultStockPerSize(parseInt(e.target.value) || 1)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-emerald-700 font-bold text-center"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-600 font-bold mb-1">تكلفة مقاس 160سم:</label>
+                    <input
+                      type="number"
+                      value={baseCost160}
+                      onChange={(e) => setBaseCost160(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold text-center"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-600 font-bold mb-1">سعر بيع مقاس 160سم:</label>
+                    <input
+                      type="number"
+                      value={basePrice160}
+                      onChange={(e) => setBasePrice160(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-blue-700 font-bold text-center"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sizes Checkbox Selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-800">
+                    حدد مقاسات العرض (بالسم) المراد إضافتها للمخزن:
+                  </label>
+                  <span className="text-xs text-indigo-600 font-bold">
+                    تم تحديد ({activeBatchWidths.length}) مقاسات
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  {STANDARD_WIDTHS.map((w) => {
+                    const isSelected = activeBatchWidths.includes(w);
+                    const ratio = w / 160;
+                    const approxPrice = Math.round((basePrice160 * ratio) / 50) * 50;
+
+                    return (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => toggleBatchWidth(w)}
+                        className={`p-3 rounded-xl border text-right transition cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black">
+                            📏 {w} × {batchLength} سم
+                          </span>
+                          <span
+                            className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                              isSelected ? 'bg-white text-indigo-700' : 'bg-slate-200 text-slate-500'
+                            }`}
+                          >
+                            {isSelected ? '✓' : ''}
+                          </span>
+                        </div>
+                        <div className={`text-[11px] mt-2 font-bold ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                          سعر التقديري: {formatCurrency(approxPrice)}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="submit"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer text-xs"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                  <span>إضافة ({activeBatchWidths.length}) مقاسات للمخزن دفعة واحدة 🚀</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsBatchModalOpen(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-3 rounded-xl transition cursor-pointer text-xs"
                 >
                   إلغاء
                 </button>
