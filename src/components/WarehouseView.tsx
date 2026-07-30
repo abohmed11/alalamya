@@ -61,39 +61,163 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
   const [batchBrand, setBatchBrand] = useState('يانسن');
   const [batchModelName, setBatchModelName] = useState('');
   const [batchType, setBatchType] = useState('سوست منفصلة');
-  const [batchLength, setBatchLength] = useState<number>(195);
-  const [batchHeight, setBatchHeight] = useState<number>(25);
   const [baseCost160, setBaseCost160] = useState<number>(3000);
   const [basePrice160, setBasePrice160] = useState<number>(4500);
   const [defaultStockPerSize, setDefaultStockPerSize] = useState<number>(5);
 
-  // Available width presets (widths in cm)
-  const STANDARD_WIDTHS = [90, 100, 110, 120, 140, 150, 160, 170, 180, 200];
-  const [activeBatchWidths, setActiveBatchWidths] = useState<number[]>([90, 100, 120, 150, 160, 180, 200]);
+  // Available Presets
+  const DEFAULT_WIDTHS = [80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200];
+  const DEFAULT_LENGTHS = [190, 195, 200];
+  const DEFAULT_HEIGHTS = [15, 20, 24, 25, 27, 30, 32];
+
+  const [activeBatchWidths, setActiveBatchWidths] = useState<number[]>([90, 100, 120, 140, 150, 160, 180, 200]);
+  const [activeBatchLengths, setActiveBatchLengths] = useState<number[]>([195]);
+  const [activeBatchHeights, setActiveBatchHeights] = useState<number[]>([25]);
+
+  // Dynamic Batch Item List
+  interface BatchItemDraft {
+    id: string;
+    width: number;
+    length: number;
+    height: number;
+    stockQuantity: number;
+    costPrice: number;
+    sellingPrice: number;
+  }
+
+  const [batchRows, setBatchRows] = useState<BatchItemDraft[]>([]);
+
+  // Single Custom Row Adder Input States
+  const [customWidthInput, setCustomWidthInput] = useState<number>(160);
+  const [customLengthInput, setCustomLengthInput] = useState<number>(195);
+  const [customHeightInput, setCustomHeightInput] = useState<number>(25);
+  const [customStockInput, setCustomStockInput] = useState<number>(5);
+  const [customPriceInput, setCustomPriceInput] = useState<number>(4500);
+
+  // Generate rows from selections
+  const regenerateBatchRows = (
+    widths: number[],
+    lengths: number[],
+    heights: number[],
+    baseCost: number,
+    basePrice: number,
+    stockPerSize: number
+  ) => {
+    const rows: BatchItemDraft[] = [];
+    widths.forEach((w) => {
+      lengths.forEach((l) => {
+        heights.forEach((h) => {
+          const ratio = w / 160;
+          const calculatedSellingPrice = Math.round((basePrice * ratio) / 50) * 50;
+          const calculatedCostPrice = Math.round((baseCost * ratio) / 50) * 50;
+
+          rows.push({
+            id: `draft-${w}-${l}-${h}-${Math.random().toString(36).substr(2, 5)}`,
+            width: w,
+            length: l,
+            height: h,
+            stockQuantity: stockPerSize,
+            costPrice: calculatedCostPrice,
+            sellingPrice: calculatedSellingPrice,
+          });
+        });
+      });
+    });
+    setBatchRows(rows);
+  };
 
   const toggleBatchWidth = (w: number) => {
+    let updated: number[];
     if (activeBatchWidths.includes(w)) {
-      if (activeBatchWidths.length === 1) {
+      if (activeBatchWidths.length === 1 && activeBatchLengths.length === 1 && activeBatchHeights.length === 1) {
         alert('يرجى اختيار مقاس واحد على الأقل');
         return;
       }
-      setActiveBatchWidths(activeBatchWidths.filter((item) => item !== w));
+      updated = activeBatchWidths.filter((item) => item !== w);
     } else {
-      setActiveBatchWidths([...activeBatchWidths, w].sort((a, b) => a - b));
+      updated = [...activeBatchWidths, w].sort((a, b) => a - b);
     }
+    setActiveBatchWidths(updated);
+    regenerateBatchRows(updated, activeBatchLengths, activeBatchHeights, baseCost160, basePrice160, defaultStockPerSize);
+  };
+
+  const toggleBatchLength = (l: number) => {
+    let updated: number[];
+    if (activeBatchLengths.includes(l)) {
+      if (activeBatchLengths.length === 1) {
+        alert('يرجى اختيار طول واحد على الأقل');
+        return;
+      }
+      updated = activeBatchLengths.filter((item) => item !== l);
+    } else {
+      updated = [...activeBatchLengths, l].sort((a, b) => a - b);
+    }
+    setActiveBatchLengths(updated);
+    regenerateBatchRows(activeBatchWidths, updated, activeBatchHeights, baseCost160, basePrice160, defaultStockPerSize);
+  };
+
+  const toggleBatchHeight = (h: number) => {
+    let updated: number[];
+    if (activeBatchHeights.includes(h)) {
+      if (activeBatchHeights.length === 1) {
+        alert('يرجى اختيار ارتفاع واحد على الأقل');
+        return;
+      }
+      updated = activeBatchHeights.filter((item) => item !== h);
+    } else {
+      updated = [...activeBatchHeights, h].sort((a, b) => a - b);
+    }
+    setActiveBatchHeights(updated);
+    regenerateBatchRows(activeBatchWidths, activeBatchLengths, updated, baseCost160, basePrice160, defaultStockPerSize);
   };
 
   const openBatchModal = () => {
     setBatchBrand(uniqueBrands[0] || 'يانسن');
     setBatchModelName('');
     setBatchType('سوست منفصلة');
-    setBatchLength(195);
-    setBatchHeight(25);
     setBaseCost160(3000);
     setBasePrice160(4500);
     setDefaultStockPerSize(5);
-    setActiveBatchWidths([90, 100, 120, 140, 150, 160, 180, 200]);
+
+    const initWidths = [90, 100, 120, 140, 150, 160, 180, 200];
+    const initLengths = [195];
+    const initHeights = [25];
+
+    setActiveBatchWidths(initWidths);
+    setActiveBatchLengths(initLengths);
+    setActiveBatchHeights(initHeights);
+
+    regenerateBatchRows(initWidths, initLengths, initHeights, 3000, 4500, 5);
     setIsBatchModalOpen(true);
+  };
+
+  const addCustomSingleRow = () => {
+    if (!customWidthInput || !customLengthInput || !customHeightInput) {
+      alert('يرجى التأكد من إدخال الطول والعرض والارتفاع بشكل صحيح');
+      return;
+    }
+
+    const newRow: BatchItemDraft = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      width: Number(customWidthInput),
+      length: Number(customLengthInput),
+      height: Number(customHeightInput),
+      stockQuantity: Number(customStockInput) || 1,
+      costPrice: Math.round((Number(customPriceInput) * 0.7) / 50) * 50,
+      sellingPrice: Number(customPriceInput) || 0,
+    };
+
+    setBatchRows([...batchRows, newRow]);
+  };
+
+  const updateRowField = (id: string, field: keyof BatchItemDraft, value: number) => {
+    setBatchRows(
+      batchRows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const removeBatchRow = (id: string) => {
+    setBatchRows(batchRows.filter((r) => r.id !== id));
   };
 
   const handleSaveBatchItems = (e: React.FormEvent) => {
@@ -104,33 +228,28 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
       return;
     }
 
-    if (activeBatchWidths.length === 0) {
-      alert('يرجى تحديد المقاسات المراد إضافتها للمخزن');
+    if (batchRows.length === 0) {
+      alert('يرجى إدراج مقاس واحد على الأقل في القائمة');
       return;
     }
 
-    // Calculate prices proportional to width based on base price for 160cm
     const now = Date.now();
-    activeBatchWidths.forEach((w, idx) => {
-      const ratio = w / 160;
-      const calculatedSellingPrice = Math.round((basePrice160 * ratio) / 50) * 50; // rounded to nearest 50
-      const calculatedCostPrice = Math.round((baseCost160 * ratio) / 50) * 50;
+    const brandCode = batchBrand.substring(0, 3).toUpperCase();
+    const modelCode = batchModelName.substring(0, 3).toUpperCase();
 
-      const brandCode = batchBrand.substring(0, 3).toUpperCase();
-      const modelCode = batchModelName.substring(0, 3).toUpperCase();
-
+    batchRows.forEach((row, idx) => {
       const itemData: MattressItem = {
-        id: `mat-${now}-${w}-${idx}`,
-        sku: `${brandCode}-${modelCode}-${w}-${batchHeight}`,
+        id: `mat-${now}-${row.width}x${row.length}x${row.height}-${idx}`,
+        sku: `${brandCode}-${modelCode}-${row.width}x${row.length}-${row.height}`,
         brand: batchBrand.trim(),
         modelName: batchModelName.trim(),
         type: batchType.trim(),
-        width: w,
-        length: Number(batchLength),
-        height: Number(batchHeight),
-        stockQuantity: Number(defaultStockPerSize),
-        costPrice: calculatedCostPrice,
-        sellingPrice: calculatedSellingPrice,
+        width: Number(row.width),
+        length: Number(row.length),
+        height: Number(row.height),
+        stockQuantity: Number(row.stockQuantity),
+        costPrice: Number(row.costPrice),
+        sellingPrice: Number(row.sellingPrice),
         minStockAlert: 2,
         notes: `تمت الإضافة التلقائية ضمن تشكيلة مقاسات موديل (${batchModelName})`,
         updatedAt: new Date().toISOString(),
@@ -140,7 +259,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
     });
 
     setIsBatchModalOpen(false);
-    alert(`تمت إضافة عدد (${activeBatchWidths.length}) مقاساً بنجاح لموديل (${batchModelName}) في المخزن!`);
+    alert(`تمت إضافة عدد (${batchRows.length}) مقاساً بنجاح لموديل (${batchModelName}) في المخزن!`);
   };
 
   const canEditPrices = activeEmployee.role === 'admin' || activeEmployee.permissions.includes('edit_prices');
@@ -631,21 +750,21 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
       {/* Add Batch Sizes Modal */}
       {isBatchModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white border border-indigo-200 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl text-slate-900">
-            <div className="flex items-center justify-between p-5 border-b border-indigo-100 bg-gradient-to-r from-indigo-900 to-slate-900 text-white">
+          <div className="bg-white border border-indigo-200 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl text-slate-900">
+            <div className="flex items-center justify-between p-5 border-b border-indigo-100 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-indigo-600 rounded-xl">
                   <Maximize2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    إضافة مقاسات متعددة لمرتبة دفعة واحدة (Batch Generator)
+                    مولّد المقاسات والأبعاد المتعددة للمرتبة (Multi-Size Generator)
                     <span className="bg-indigo-500/30 text-indigo-200 text-[10px] px-2 py-0.5 rounded-full border border-indigo-400/30">
-                      توليد تلقائي
+                      إدارة المقاسات والأبعاد
                     </span>
                   </h3>
                   <p className="text-xs text-indigo-200 mt-0.5">
-                    اختر موديل المرتبة، وحدد مقاسات العرض المطلوبة لإضافتها كلها للمخزن بنقرة زر واحدة
+                    يمكنك تحديد عدة أطوال وأعراض وارتفاعات للموديل الواحد، أو إدراج مقاسات مخصصة بأسعار وكميات مختلفة
                   </p>
                 </div>
               </div>
@@ -657,9 +776,9 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveBatchItems} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+            <form onSubmit={handleSaveBatchItems} className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
               {/* Basic Model Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     الشركة / الماركة:
@@ -683,7 +802,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                     value={batchModelName}
                     onChange={(e) => setBatchModelName(e.target.value)}
                     required
-                    placeholder="مثال: ماريوت، كتارا، ميديال، اكسترا"
+                    placeholder="مثال: ماريوت، كتارا، ميديكال، اكسترا"
                     className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
                   />
                 </div>
@@ -706,46 +825,34 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                 </div>
               </div>
 
-              {/* Standard Dimensions & Base Price Reference */}
-              <div className="bg-indigo-50/70 border border-indigo-200 p-4 rounded-xl space-y-3">
-                <div className="flex items-center justify-between border-b border-indigo-200/60 pb-2">
+              {/* Base Reference Pricing & Stock */}
+              <div className="bg-indigo-50/70 border border-indigo-200 p-3.5 rounded-xl space-y-2">
+                <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5">
                   <span className="text-xs font-black text-indigo-900 flex items-center gap-1.5">
                     <Tag className="w-4 h-4 text-indigo-600" />
-                    المواصفات القياسية وحساب الأسعار التلقائي:
-                  </span>
-                  <span className="text-[11px] text-indigo-700 font-semibold">
-                    (تُحسب أسعار المقاسات تلقائياً بناءً على مقاس 160 سم)
+                    مرجع الأسعار القياسي لتوليد المقاسات التلقائي (المرجع 160×195سم):
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  <div>
-                    <label className="block text-[11px] text-slate-600 font-bold mb-1">الطول الثابت (سم):</label>
-                    <input
-                      type="number"
-                      value={batchLength}
-                      onChange={(e) => setBatchLength(parseInt(e.target.value) || 195)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold text-center"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-600 font-bold mb-1">الارتفاع (سم):</label>
-                    <input
-                      type="number"
-                      value={batchHeight}
-                      onChange={(e) => setBatchHeight(parseInt(e.target.value) || 25)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold text-center"
-                    />
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[11px] text-slate-600 font-bold mb-1">الكمية لكل مقاس:</label>
                     <input
                       type="number"
                       min="1"
                       value={defaultStockPerSize}
-                      onChange={(e) => setDefaultStockPerSize(parseInt(e.target.value) || 1)}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setDefaultStockPerSize(val);
+                        regenerateBatchRows(
+                          activeBatchWidths,
+                          activeBatchLengths,
+                          activeBatchHeights,
+                          baseCost160,
+                          basePrice160,
+                          val
+                        );
+                      }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-emerald-700 font-bold text-center"
                     />
                   </div>
@@ -755,7 +862,18 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                     <input
                       type="number"
                       value={baseCost160}
-                      onChange={(e) => setBaseCost160(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setBaseCost160(val);
+                        regenerateBatchRows(
+                          activeBatchWidths,
+                          activeBatchLengths,
+                          activeBatchHeights,
+                          val,
+                          basePrice160,
+                          defaultStockPerSize
+                        );
+                      }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold text-center"
                     />
                   </div>
@@ -765,59 +883,279 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                     <input
                       type="number"
                       value={basePrice160}
-                      onChange={(e) => setBasePrice160(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setBasePrice160(val);
+                        regenerateBatchRows(
+                          activeBatchWidths,
+                          activeBatchLengths,
+                          activeBatchHeights,
+                          baseCost160,
+                          val,
+                          defaultStockPerSize
+                        );
+                      }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-blue-700 font-bold text-center"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Sizes Checkbox Selection */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-slate-800">
-                    حدد مقاسات العرض (بالسم) المراد إضافتها للمخزن:
-                  </label>
-                  <span className="text-xs text-indigo-600 font-bold">
-                    تم تحديد ({activeBatchWidths.length}) مقاسات
+              {/* Multi-Select Dimension Options */}
+              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                {/* Widths Multi Selector */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <span>📐 1. حدد أعراض المرتبة (العرض بالسم):</span>
+                    </label>
+                    <span className="text-[11px] text-indigo-600 font-bold">
+                      تم تحديد ({activeBatchWidths.length}) عرض
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DEFAULT_WIDTHS.map((w) => {
+                      const isSelected = activeBatchWidths.includes(w);
+                      return (
+                        <button
+                          key={w}
+                          type="button"
+                          onClick={() => toggleBatchWidth(w)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {w} سم {isSelected ? '✓' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Lengths Multi Selector */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <span>📏 2. حدد أطوال المرتبة (الطول بالسم):</span>
+                    </label>
+                    <span className="text-[11px] text-indigo-600 font-bold">
+                      تم تحديد ({activeBatchLengths.length}) طول
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DEFAULT_LENGTHS.map((l) => {
+                      const isSelected = activeBatchLengths.includes(l);
+                      return (
+                        <button
+                          key={l}
+                          type="button"
+                          onClick={() => toggleBatchLength(l)}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          طول {l} سم {isSelected ? '✓' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Heights Multi Selector */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <span>📦 3. حدد ارتفاعات المرتبة (الارتفاع بالسم):</span>
+                    </label>
+                    <span className="text-[11px] text-indigo-600 font-bold">
+                      تم تحديد ({activeBatchHeights.length}) ارتفاع
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DEFAULT_HEIGHTS.map((h) => {
+                      const isSelected = activeBatchHeights.includes(h);
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => toggleBatchHeight(h)}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          ارتفاع {h} سم {isSelected ? '✓' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Custom Single Combination Row */}
+              <div className="bg-amber-50/70 border border-amber-200 p-3.5 rounded-xl space-y-2">
+                <div className="text-xs font-black text-amber-900 flex items-center justify-between">
+                  <span>➕ إضافة مقاس مخصص يدوي (عرض × طول × ارتفاع):</span>
+                  <span className="text-[11px] text-amber-700 font-semibold">
+                    لإضافة مقاس خاص غير متوفر بالقوائم أعلاه
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-                  {STANDARD_WIDTHS.map((w) => {
-                    const isSelected = activeBatchWidths.includes(w);
-                    const ratio = w / 160;
-                    const approxPrice = Math.round((basePrice160 * ratio) / 50) * 50;
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-center">
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-bold">العرض (سم):</label>
+                    <input
+                      type="number"
+                      value={customWidthInput}
+                      onChange={(e) => setCustomWidthInput(parseInt(e.target.value) || 0)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-center"
+                    />
+                  </div>
 
-                    return (
-                      <button
-                        key={w}
-                        type="button"
-                        onClick={() => toggleBatchWidth(w)}
-                        className={`p-3 rounded-xl border text-right transition cursor-pointer flex flex-col justify-between ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black">
-                            📏 {w} × {batchLength} سم
-                          </span>
-                          <span
-                            className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                              isSelected ? 'bg-white text-indigo-700' : 'bg-slate-200 text-slate-500'
-                            }`}
-                          >
-                            {isSelected ? '✓' : ''}
-                          </span>
-                        </div>
-                        <div className={`text-[11px] mt-2 font-bold ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                          سعر التقديري: {formatCurrency(approxPrice)}
-                        </div>
-                      </button>
-                    );
-                  })}
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-bold">الطول (سم):</label>
+                    <input
+                      type="number"
+                      value={customLengthInput}
+                      onChange={(e) => setCustomLengthInput(parseInt(e.target.value) || 0)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-center"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-bold">الارتفاع (سم):</label>
+                    <input
+                      type="number"
+                      value={customHeightInput}
+                      onChange={(e) => setCustomHeightInput(parseInt(e.target.value) || 0)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-center"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-bold">سعر البيع:</label>
+                    <input
+                      type="number"
+                      value={customPriceInput}
+                      onChange={(e) => setCustomPriceInput(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-center text-blue-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-bold">الكمية:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={customStockInput}
+                      onChange={(e) => setCustomStockInput(parseInt(e.target.value) || 1)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-center text-emerald-700"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addCustomSingleRow}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-2 rounded-lg transition cursor-pointer mt-3 sm:mt-3 shadow-xs flex items-center justify-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>إضافة المقاس</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Generated Sizes Preview Table & Editing */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-800">
+                    قائمة المقاسات الجاهزة للإضافة إلى المخزن (إجمالي {batchRows.length} مقاس):
+                  </label>
+                  <span className="text-xs text-indigo-700 font-bold">
+                    يمكنك تعديل الأسعار والكميات لكل مقاس مباشرة قبل الحفظ
+                  </span>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-slate-100 text-slate-700 sticky top-0 font-bold">
+                      <tr>
+                        <th className="p-2.5">المقاس (عرض×طول×ارتفاع)</th>
+                        <th className="p-2.5 text-center">الكمية بالمخزن</th>
+                        <th className="p-2.5 text-center">سعر التكلفة (ج.م)</th>
+                        <th className="p-2.5 text-center">سعر البيع (ج.م)</th>
+                        <th className="p-2.5 text-center">حذف</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {batchRows.map((row) => (
+                        <tr key={row.id} className="hover:bg-indigo-50/50 transition">
+                          <td className="p-2.5 font-black text-slate-900 dir-ltr text-right">
+                            📏 {row.width} × {row.length} سم (ارتفاع {row.height} سم)
+                          </td>
+
+                          <td className="p-2 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.stockQuantity}
+                              onChange={(e) =>
+                                updateRowField(row.id, 'stockQuantity', parseInt(e.target.value) || 0)
+                              }
+                              className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-center text-emerald-800"
+                            />
+                          </td>
+
+                          <td className="p-2 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.costPrice}
+                              onChange={(e) =>
+                                updateRowField(row.id, 'costPrice', parseFloat(e.target.value) || 0)
+                              }
+                              className="w-20 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-center text-slate-700"
+                            />
+                          </td>
+
+                          <td className="p-2 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.sellingPrice}
+                              onChange={(e) =>
+                                updateRowField(row.id, 'sellingPrice', parseFloat(e.target.value) || 0)
+                              }
+                              className="w-24 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-center text-blue-700"
+                            />
+                          </td>
+
+                          <td className="p-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeBatchRow(row.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                              title="حذف هذا المقاس"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {batchRows.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="text-center py-6 text-slate-400 font-medium text-xs">
+                            لا توجد مقاسات محددة حالياً. اختر من الخيارات أعلاه أو أضف مقاساً مخصصاً.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
@@ -825,10 +1163,15 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
               <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer text-xs"
+                  disabled={batchRows.length === 0}
+                  className={`flex-1 font-black py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer text-xs ${
+                    batchRows.length > 0
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
                 >
                   <Maximize2 className="w-4 h-4" />
-                  <span>إضافة ({activeBatchWidths.length}) مقاسات للمخزن دفعة واحدة 🚀</span>
+                  <span>حفظ وإضافة ({batchRows.length}) مقاساً للمخزن دفعة واحدة 🚀</span>
                 </button>
                 <button
                   type="button"
