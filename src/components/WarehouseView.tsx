@@ -107,9 +107,14 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
     widths.forEach((w) => {
       lengths.forEach((l) => {
         heights.forEach((h) => {
-          const ratio = w / 160;
-          const calculatedSellingPrice = Math.round((basePrice * ratio) / 50) * 50;
-          const calculatedCostPrice = Math.round((baseCost * ratio) / 50) * 50;
+          // Rule: Price varies based on Width (العرض) and Height (الارتفاع), but NOT Length (الطول).
+          // Base reference: Width 160 cm, Height 25 cm.
+          const widthFactor = w / 160;
+          const heightFactor = 1 + (h - 25) * 0.02; // Each 1cm height adds/subtracts ~2%
+          const ratio = widthFactor * heightFactor;
+
+          const calculatedSellingPrice = Math.max(500, Math.round((basePrice * ratio) / 50) * 50);
+          const calculatedCostPrice = Math.max(300, Math.round((baseCost * ratio) / 50) * 50);
 
           rows.push({
             id: `draft-${w}-${l}-${h}-${Math.random().toString(36).substr(2, 5)}`,
@@ -794,59 +799,98 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
 
             <form onSubmit={handleSaveBatchItems} className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
               {/* Basic Model Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    الشركة / الماركة:
-                  </label>
-                  <input
-                    type="text"
-                    value={batchBrand}
-                    onChange={(e) => setBatchBrand(e.target.value)}
-                    required
-                    placeholder="مثال: يانسن، فوربد، تاكي، العالمية"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
-                  />
-                </div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      الشركة / الماركة:
+                    </label>
+                    <input
+                      type="text"
+                      value={batchBrand}
+                      onChange={(e) => setBatchBrand(e.target.value)}
+                      required
+                      placeholder="مثال: يانسن، فوربد، تاكي، العالمية"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
+                    />
+                    {/* Quick Brand Pills */}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {['يانسن', 'فوربد', 'تاكي', 'العالمية', 'هابيتات', 'إنجلندر'].map((b) => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => setBatchBrand(b)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border transition cursor-pointer ${
+                            batchBrand === b
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    اسم الموديل:
-                  </label>
-                  <input
-                    type="text"
-                    value={batchModelName}
-                    onChange={(e) => setBatchModelName(e.target.value)}
-                    required
-                    placeholder="مثال: ماريوت، كتارا، ميديكال، اكسترا"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      اسم الموديل:
+                    </label>
+                    <input
+                      type="text"
+                      value={batchModelName}
+                      onChange={(e) => setBatchModelName(e.target.value)}
+                      required
+                      placeholder="مثال: ماريوت، كتارا، ميديكال، اكسترا"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
+                    />
+                    {/* Quick Model Suggestions */}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {['ماريوت', 'كتارا', 'كاتراكت', 'ألماني', 'إكسترا', 'جولد', 'دريم', 'ريبوند'].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setBatchModelName(m)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border transition cursor-pointer ${
+                            batchModelName === m
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    نوع المرتبة / الحشو:
-                  </label>
-                  <select
-                    value={batchType}
-                    onChange={(e) => setBatchType(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
-                  >
-                    <option value="سوست منفصلة">سوست منفصلة (Pocket Springs)</option>
-                    <option value="سوست متصلة">سوست متصلة (Bonnell Springs)</option>
-                    <option value="إسفنج مضغوط (ميديكال)">إسفنج مضغوط (ميديكال)</option>
-                    <option value="لاتكس طبي وميموري فوم">لاتكس طبي وميموري فوم</option>
-                    <option value="تاكي هاي كلاس">تاكي هاي كلاس</option>
-                  </select>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      نوع المرتبة / الحشو:
+                    </label>
+                    <select
+                      value={batchType}
+                      onChange={(e) => setBatchType(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 shadow-xs"
+                    >
+                      <option value="سوست منفصلة">سوست منفصلة (Pocket Springs)</option>
+                      <option value="سوست متصلة">سوست متصلة (Bonnell Springs)</option>
+                      <option value="إسفنج مضغوط (ميديكال)">إسفنج مضغوط (ميديكال)</option>
+                      <option value="لاتكس طبي وميموري فوم">لاتكس طبي وميموري فوم</option>
+                      <option value="تاكي هاي كلاس">تاكي هاي كلاس</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
               {/* Base Reference Pricing & Stock */}
-              <div className="bg-indigo-50/70 border border-indigo-200 p-3.5 rounded-xl space-y-2">
-                <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5">
+              <div className="bg-indigo-50/70 border border-indigo-200 p-3.5 rounded-xl space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-indigo-200/60 pb-2 gap-2">
                   <span className="text-xs font-black text-indigo-900 flex items-center gap-1.5">
                     <Tag className="w-4 h-4 text-indigo-600" />
-                    مرجع الأسعار القياسي لتوليد المقاسات التلقائي (المرجع 160×195سم):
+                    مرجع الأسعار القياسي لتوليد المقاسات التلقائي (مرجع القياس 160×195سم):
+                  </span>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    💡 السعر يتحدد بـ (العرض + الارتفاع) والطول ثابت لا يغير السعر
                   </span>
                 </div>
 
@@ -874,7 +918,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] text-slate-600 font-bold mb-1">تكلفة مقاس 160سم:</label>
+                    <label className="block text-[11px] text-slate-600 font-bold mb-1">تكلفة مقاس 160سم (ج.م):</label>
                     <input
                       type="number"
                       value={baseCost160}
@@ -895,7 +939,7 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] text-slate-600 font-bold mb-1">سعر بيع مقاس 160سم:</label>
+                    <label className="block text-[11px] text-slate-600 font-bold mb-1">سعر بيع مقاس 160سم (ج.م):</label>
                     <input
                       type="number"
                       value={basePrice160}
