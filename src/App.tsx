@@ -8,7 +8,7 @@ import { EmployeesView } from './components/EmployeesView';
 import { AdminSettingsView } from './components/AdminSettingsView';
 import { LoginModal } from './components/LoginModal';
 import { ShiftHandoverModal } from './components/ShiftHandoverModal';
-import { SystemData, MattressItem, Invoice, Employee, ShiftLog, StoreSettings } from './types';
+import { SystemData, MattressItem, Invoice, Employee, ShiftLog, StoreSettings, OfferBundle } from './types';
 import { loadSystemData, saveSystemData, resetSystemData, loadFromIndexedDB } from './utils/storage';
 
 export default function App() {
@@ -246,6 +246,13 @@ export default function App() {
     }));
   };
 
+  const handleSaveBundles = (newBundles: OfferBundle[]) => {
+    setData((prev) => ({
+      ...prev,
+      bundles: newBundles,
+    }));
+  };
+
   const handleRestoreSystemData = (newData: SystemData) => {
     setData(newData);
   };
@@ -277,6 +284,8 @@ export default function App() {
             activeEmployee={activeEmployee}
             activeShift={activeShift}
             settings={data.settings}
+            bundles={data.bundles || []}
+            onSaveBundles={handleSaveBundles}
             onCreateInvoice={handleCreateInvoice}
           />
         )}

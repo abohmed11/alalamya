@@ -115,6 +115,31 @@ export interface StoreSettings {
   currencySymbol: string; // ج.م
 }
 
+export interface BundleItem {
+  mattressId?: string;
+  brand: string;
+  modelName: string;
+  type: string;
+  dimensionsText: string;
+  width: number;
+  length: number;
+  height: number;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface OfferBundle {
+  id: string;
+  name: string;
+  badge: string;
+  description: string;
+  items: BundleItem[];
+  originalTotal: number;
+  bundlePrice: number;
+  savingsAmount: number;
+  isActive: boolean;
+}
+
 export interface SystemData {
   items: MattressItem[];
   invoices: Invoice[];
@@ -123,4 +148,5 @@ export interface SystemData {
   settings: StoreSettings;
   activeEmployeeId: string;
   activeShiftId: string | null;
+  bundles?: OfferBundle[];
 }

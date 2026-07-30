@@ -21,6 +21,9 @@ import {
   Maximize2,
   X,
   SlidersHorizontal,
+  Gift,
+  Crown,
+  Settings,
 } from 'lucide-react';
 import {
   MattressItem,
@@ -30,9 +33,11 @@ import {
   StoreSettings,
   ShiftLog,
   PaymentMethod,
+  OfferBundle,
 } from '../types';
 import { formatCurrency, generateNextInvoiceNumber } from '../utils/storage';
 import { printInvoiceHTML } from '../utils/pdfExport';
+import { BundleManagerModal } from './BundleManagerModal';
 
 interface InvoicingViewProps {
   items: MattressItem[];
@@ -40,6 +45,8 @@ interface InvoicingViewProps {
   activeEmployee: Employee;
   activeShift: ShiftLog | null;
   settings: StoreSettings;
+  bundles?: OfferBundle[];
+  onSaveBundles?: (bundles: OfferBundle[]) => void;
   onCreateInvoice: (newInvoice: Invoice) => void;
 }
 
@@ -49,6 +56,8 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
   activeEmployee,
   activeShift,
   settings,
+  bundles = [],
+  onSaveBundles,
   onCreateInvoice,
 }) => {
   // Search & Filter State for Warehouse items
@@ -74,10 +83,77 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
   // Modals & Feedback State
   const [lastCreatedInvoice, setLastCreatedInvoice] = useState<Invoice | null>(null);
   const [successToast, setSuccessToast] = useState(false);
+  const [isBundleManagerOpen, setIsBundleManagerOpen] = useState(false);
 
   // View Mode & Size Selection Modal State
   const [catalogDisplayMode, setCatalogDisplayMode] = useState<'grouped' | 'flat'>('grouped');
   const [selectedModelForSizes, setSelectedModelForSizes] = useState<{ brand: string; modelName: string } | null>(null);
+
+  // Add Special Offer Bundle to Cart in 1-Click
+  const addBundleToCart = (bundle: OfferBundle) => {
+    let stockAlerts: string[] = [];
+    const itemsToAdd: InvoiceItem[] = [];
+
+    bundle.items.forEach((bItem) => {
+      // Find matching item in inventory
+      const matched = items.find(
+        (m) =>
+          (bItem.mattressId && m.id === bItem.mattressId) ||
+          (m.brand.toLowerCase().includes(bItem.brand.toLowerCase()) &&
+            m.modelName.toLowerCase().includes(bItem.modelName.toLowerCase()) &&
+            m.width === bItem.width)
+      ) || items.find((m) => m.width === bItem.width);
+
+      if (matched && matched.stockQuantity < bItem.quantity) {
+        stockAlerts.push(
+          `• المرتبة (${bItem.brand} ${bItem.modelName} مقاس ${bItem.dimensionsText}): الكمية المتاحة بالمخزن (${matched.stockQuantity}) بينما المطلوب بالعرض (${bItem.quantity})`
+        );
+      }
+
+      // Proportional pricing calculation
+      const ratio = bundle.originalTotal > 0 ? bundle.bundlePrice / bundle.originalTotal : 1;
+      const effectiveUnitPrice = Math.round((bItem.unitPrice * ratio) / 50) * 50;
+
+      itemsToAdd.push({
+        mattressId: matched ? matched.id : `bundle-mat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        brand: bItem.brand,
+        modelName: bItem.modelName,
+        type: bItem.type,
+        dimensionsText: bItem.dimensionsText,
+        unitPrice: effectiveUnitPrice,
+        costPrice: matched ? matched.costPrice : Math.round(effectiveUnitPrice * 0.7),
+        quantity: bItem.quantity,
+        totalPrice: effectiveUnitPrice * bItem.quantity,
+      });
+    });
+
+    if (stockAlerts.length > 0) {
+      const confirmAdd = confirm(
+        `تنبيه المخزون لبعض المراتب المكونة للعرض:\n${stockAlerts.join('\n')}\n\nهل ترغب بالاستمرار وإضافة العرض للفاتورة؟`
+      );
+      if (!confirmAdd) return;
+    }
+
+    setCartItems((prevCart) => {
+      const updated = [...prevCart];
+      itemsToAdd.forEach((itemToAdd) => {
+        const idx = updated.findIndex((ci) => ci.mattressId === itemToAdd.mattressId);
+        if (idx > -1) {
+          updated[idx].quantity += itemToAdd.quantity;
+          updated[idx].totalPrice = updated[idx].quantity * updated[idx].unitPrice;
+        } else {
+          updated.push(itemToAdd);
+        }
+      });
+      return updated;
+    });
+
+    setInvoiceNotes((prev) =>
+      prev ? `${prev} | شامل (${bundle.name})` : `شامل (${bundle.name})`
+    );
+
+    alert(`🎉 تم إضافة (${bundle.name}) المكون من (${bundle.items.reduce((a, b) => a + b.quantity, 0)}) مراتب بنجاح إلى الفاتورة بلمسة واحدة!`);
+  };
 
   // Filtered Warehouse Mattresses
   const filteredMattresses = useMemo(() => {
@@ -327,6 +403,96 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Special Offers & Bundles Corner (ركن العروض والباقات - عرض العريس 👑) */}
+      <div className="bg-gradient-to-r from-amber-950 via-amber-900 to-slate-900 rounded-2xl p-4 sm:p-5 text-white shadow-md border border-amber-500/30 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-700/50 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-500/20 rounded-xl border border-amber-400/30 text-amber-300">
+              <Crown className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                👑 ركن العروض والباقات الجاهزة (عرض العريس 3 مراتب / عرض العروسة)
+                <span className="bg-amber-400/20 text-amber-200 text-[10px] px-2.5 py-0.5 rounded-full border border-amber-400/30 font-bold">
+                  إضافة بنقرة واحدة 🚀
+                </span>
+              </h2>
+              <p className="text-xs text-amber-200 mt-0.5">
+                اضغط على أي عرض لإضافة كافة مراتبه الـ 3 فوراً بالفاتورة دون الحاجة لاختيار كل مرتبة على حدة!
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsBundleManagerOpen(true)}
+            className="bg-amber-500 hover:bg-amber-400 text-amber-950 font-black text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm cursor-pointer self-start sm:self-center shrink-0"
+          >
+            <Settings className="w-4 h-4" />
+            <span>إدارة وتصميم العروض ⚙️</span>
+          </button>
+        </div>
+
+        {/* Offer Cards Horizontal Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {bundles.map((bundle) => {
+            const totalQty = bundle.items.reduce((a, b) => a + b.quantity, 0);
+            return (
+              <div
+                key={bundle.id}
+                className="bg-slate-900/90 border border-amber-400/40 rounded-xl p-3.5 flex flex-col justify-between hover:border-amber-400 transition group shadow-sm"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="bg-amber-400/20 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-400/30">
+                      {bundle.badge}
+                    </span>
+                    <span className="text-[11px] text-amber-200 font-bold">
+                      {totalQty} مراتب
+                    </span>
+                  </div>
+
+                  <h3 className="text-sm font-black text-white group-hover:text-amber-300 transition">
+                    {bundle.name}
+                  </h3>
+
+                  <p className="text-[11px] text-slate-300 mt-1 line-clamp-2">
+                    {bundle.description}
+                  </p>
+
+                  <div className="mt-2.5 bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[11px] space-y-1">
+                    {bundle.items.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-slate-300">
+                        <span>🔹 {item.quantity}× {item.brand} ({item.dimensionsText})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] text-slate-400 line-through">
+                      {formatCurrency(bundle.originalTotal)}
+                    </div>
+                    <div className="text-sm font-black text-emerald-400">
+                      {formatCurrency(bundle.bundlePrice)}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => addBundleToCart(bundle)}
+                    className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs px-3 py-2 rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                  >
+                    <Gift className="w-3.5 h-3.5" />
+                    <span>إضافة للفاتورة 🚀</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Side: Mattress Stock Selection (7 cols) */}
@@ -925,6 +1091,17 @@ export const InvoicingView: React.FC<InvoicingViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Bundle Manager Modal for creating/editing custom offers */}
+      {isBundleManagerOpen && onSaveBundles && (
+        <BundleManagerModal
+          isOpen={isBundleManagerOpen}
+          onClose={() => setIsBundleManagerOpen(false)}
+          bundles={bundles}
+          inventoryItems={items}
+          onSaveBundles={onSaveBundles}
+        />
       )}
     </div>
   );

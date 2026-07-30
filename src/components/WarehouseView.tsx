@@ -171,6 +171,22 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
     regenerateBatchRows(activeBatchWidths, activeBatchLengths, updated, baseCost160, basePrice160, defaultStockPerSize);
   };
 
+  const selectAllWidths = () => {
+    setActiveBatchWidths(DEFAULT_WIDTHS);
+    regenerateBatchRows(DEFAULT_WIDTHS, activeBatchLengths, activeBatchHeights, baseCost160, basePrice160, defaultStockPerSize);
+  };
+
+  const selectPopularWidths = () => {
+    const pop = [100, 120, 150, 160, 180];
+    setActiveBatchWidths(pop);
+    regenerateBatchRows(pop, activeBatchLengths, activeBatchHeights, baseCost160, basePrice160, defaultStockPerSize);
+  };
+
+  const clearWidths = () => {
+    setActiveBatchWidths([]);
+    regenerateBatchRows([], activeBatchLengths, activeBatchHeights, baseCost160, basePrice160, defaultStockPerSize);
+  };
+
   const openBatchModal = () => {
     setBatchBrand(uniqueBrands[0] || 'يانسن');
     setBatchModelName('');
@@ -905,14 +921,36 @@ export const WarehouseView: React.FC<WarehouseViewProps> = ({
               <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 {/* Widths Multi Selector */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                     <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                      <span>📐 1. حدد أعراض المرتبة (العرض بالسم):</span>
+                      <span>📐 1. حدد أعراض المرتبة المطلوب إضافتها (العرض بالسم):</span>
                     </label>
-                    <span className="text-[11px] text-indigo-600 font-bold">
-                      تم تحديد ({activeBatchWidths.length}) عرض
-                    </span>
+
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={selectPopularWidths}
+                        className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1 rounded-md border border-indigo-200 transition cursor-pointer"
+                      >
+                        الأكثر مبيعاً (100، 120، 150، 160، 180)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={selectAllWidths}
+                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold px-2 py-1 rounded-md border border-emerald-200 transition cursor-pointer"
+                      >
+                        تحديد الكل
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearWidths}
+                        className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2 py-1 rounded-md transition cursor-pointer"
+                      >
+                        تفريغ
+                      </button>
+                    </div>
                   </div>
+
                   <div className="flex flex-wrap gap-1.5">
                     {DEFAULT_WIDTHS.map((w) => {
                       const isSelected = activeBatchWidths.includes(w);
