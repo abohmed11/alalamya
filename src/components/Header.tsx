@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ShoppingCart,
   FileText,
@@ -12,8 +12,10 @@ import {
   Clock,
   Sparkles,
   Lock,
+  Laptop,
 } from 'lucide-react';
 import { Employee, StoreSettings, ShiftLog } from '../types';
+import { InstallAppModal } from './InstallAppModal';
 
 interface HeaderProps {
   activeTab: string;
@@ -34,6 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSwitchUserClick,
   onHandoverShiftClick,
 }) => {
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
   const hasPermission = (key: string) => {
     if (activeEmployee.role === 'admin') return true;
     return activeEmployee.permissions.includes(key as any);
@@ -137,6 +141,15 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Action Buttons */}
             <div className="flex items-center gap-1.5 mr-auto sm:mr-0">
               <button
+                onClick={() => setIsInstallModalOpen(true)}
+                className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1.5 font-bold cursor-pointer"
+                title="تثبيت التطبيق كبرنامج على الكمبيوتر لسطح المكتب"
+              >
+                <Laptop className="w-3.5 h-3.5 text-emerald-400" />
+                <span>تثبيت التطبيق 💻</span>
+              </button>
+
+              <button
                 onClick={onSwitchUserClick}
                 className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 font-medium cursor-pointer"
                 title="تغيير المستخدم بكود PIN"
@@ -190,6 +203,11 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </nav>
       </div>
+
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+      />
     </header>
   );
 };

@@ -15,9 +15,11 @@ import {
   FileText,
   DollarSign,
   Info,
+  Laptop,
 } from 'lucide-react';
 import { SystemData, StoreSettings } from '../types';
 import { exportBackupJSON, importBackupJSON, exportSystemDataToExcel, formatCurrency, selectAutoSaveFile, selectAutoSaveExcelFile } from '../utils/storage';
+import { InstallAppModal } from './InstallAppModal';
 
 interface AdminSettingsViewProps {
   systemData: SystemData;
@@ -36,6 +38,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   const [toastMsg, setToastMsg] = useState('');
   const [autoSaveFileName, setAutoSaveFileName] = useState<string | null>(null);
   const [autoSaveExcelName, setAutoSaveExcelName] = useState<string | null>(null);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   const handleSelectAutoSaveFile = async () => {
     try {
@@ -251,6 +254,29 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           </p>
 
           <div className="space-y-3 pt-2">
+            {/* Desktop App Install Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-4 rounded-xl border-2 border-emerald-500/50 shadow-md space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-600 rounded-lg text-white">
+                    <Laptop className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-white">تثبيت البرنامج على كمبيوتر المحل (Desktop App)</h4>
+                    <p className="text-[11px] text-slate-300">تشغيل سلس وسريع بنوافذ مستقلة على ويندوز 7 و10 و11</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsInstallModalOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Laptop className="w-4 h-4" />
+                  <span>تثبيت الآن 💻</span>
+                </button>
+              </div>
+            </div>
+
             {/* Primary Backup & Restore Actions Card */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 p-4 rounded-xl space-y-3 shadow-sm">
               <div className="text-xs font-black text-blue-900 border-b border-blue-200 pb-2 flex items-center justify-between">
@@ -373,6 +399,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           </div>
         </div>
       </div>
+
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+      />
     </div>
   );
 };
